@@ -118,7 +118,9 @@ func (r *shopRepository) GetShops(ctx context.Context, req *entity.ShopsRequest)
 			id,
 			name
 		FROM shops
-		WHERE user_id = ?
+		WHERE
+			deleted_at IS NULL
+			AND user_id = ?
 		LIMIT ? OFFSET ?
 	`
 
@@ -143,8 +145,4 @@ func (r *shopRepository) GetShops(ctx context.Context, req *entity.ShopsRequest)
 	resp.Meta.CountTotalPage(req.Page, req.Paginate, resp.Meta.TotalData)
 
 	return resp, nil
-}
-
-func (r *shopRepository) IsShopOwner(ctx context.Context, userId, shopId string) (bool, error) {
-	panic("implement me")
 }
