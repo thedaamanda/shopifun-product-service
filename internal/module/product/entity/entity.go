@@ -13,9 +13,14 @@ type Category struct {
 }
 
 type ProductsRequest struct {
-	UserId   string `prop:"user_id" validate:"uuid"`
-	Page     int    `query:"page" validate:"required"`
-	Paginate int    `query:"paginate" validate:"required"`
+	UserId      string   `prop:"user_id" validate:"uuid"`
+	Page        int      `query:"page" validate:"required"`
+	Paginate    int      `query:"paginate" validate:"required"`
+	CategoryId  string   `query:"category_id" validate:"omitempty,uuid"`
+	MinPrice    *float64 `query:"min_price" validate:"omitempty,numeric,min=0"`
+	MaxPrice    *float64 `query:"max_price" validate:"omitempty,numeric,min=0"`
+	SearchQuery string   `query:"search_query" validate:"omitempty,min=3,max=255"`
+	IsAvailable bool     `query:"is_available" validate:"omitempty"`
 }
 
 func (r *ProductsRequest) SetDefault() {

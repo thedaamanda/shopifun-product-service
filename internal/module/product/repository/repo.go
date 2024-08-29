@@ -52,14 +52,39 @@ func (r *productRepository) GetProducts(ctx context.Context, req *entity.Product
 		WHERE
 			p.user_id = ?
 			AND p.deleted_at IS NULL
-		LIMIT ? OFFSET ?
 	`
 
-	err := r.db.SelectContext(ctx, &data, r.db.Rebind(query),
-		req.UserId,
-		req.Paginate,
-		req.Paginate*(req.Page-1),
-	)
+	args := []interface{}{req.UserId}
+
+	if req.CategoryId != "" {
+		query += " AND c.id = ?"
+		args = append(args, req.CategoryId)
+	}
+
+	if req.MinPrice != nil {
+		query += " AND p.price >= ?"
+		args = append(args, *req.MinPrice)
+	}
+
+	if req.MaxPrice != nil {
+		query += " AND p.price <= ?"
+		args = append(args, *req.MaxPrice)
+	}
+
+	if req.SearchQuery != "" {
+		query += " AND (p.name LIKE ? OR p.description LIKE ?)"
+		searchTerm := "%" + req.SearchQuery + "%"
+		args = append(args, searchTerm, searchTerm)
+	}
+
+	if req.IsAvailable {
+		query += " AND p.stock > 0"
+	}
+
+	query += "ORDER BY p.created_at DESC LIMIT ? OFFSET ?"
+	args = append(args, req.Paginate, req.Paginate*(req.Page-1))
+
+	err := r.db.SelectContext(ctx, &data, r.db.Rebind(query), args...)
 	if err != nil {
 		log.Error().Err(err).Any("payload", req).Msg("repository::GetProducts - Failed to get products")
 		return nil, err
