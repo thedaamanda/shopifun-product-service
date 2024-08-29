@@ -32,11 +32,15 @@ func Execute(db *sqlx.DB, table string, total int) {
 func (s *Seed) run(table string, total int) {
 
 	switch table {
+	case "categories":
+		s.categoriesSeed()
+	case "products":
 	case "roles":
 		s.rolesSeed()
 	case "users":
 		s.usersSeed(total)
 	case "all":
+		s.categoriesSeed()
 		s.rolesSeed()
 		s.usersSeed(total)
 	case "delete-all":
@@ -89,6 +93,42 @@ func (s *Seed) deleteAll() {
 	log.Info().Msg("roles table deleted successfully")
 
 	log.Info().Msg("=== All tables deleted successfully ===")
+}
+
+func (s *Seed) categoriesSeed() {
+	categoriesMaps := []map[string]any{
+		{"name": "Electronics"},
+		{"name": "Clothing"},
+		{"name": "Books"},
+	}
+
+	tx, err := s.db.BeginTxx(context.Background(), nil)
+	if err != nil {
+		log.Error().Err(err).Msg("Error starting transaction")
+		return
+	}
+	defer func() {
+		if err != nil {
+			err = tx.Rollback()
+			log.Error().Err(err).Msg("Error rolling back transaction")
+			return
+		}
+		err = tx.Commit()
+		if err != nil {
+			log.Error().Err(err).Msg("Error committing transaction")
+		}
+	}()
+
+	_, err = tx.NamedExec(`
+		INSERT INTO categories (name)
+		VALUES (:name)
+	`, categoriesMaps)
+	if err != nil {
+		log.Error().Err(err).Msg("Error creating categories")
+		return
+	}
+
+	log.Info().Msg("categories table seeded successfully")
 }
 
 // rolesSeed seeds the roles table.

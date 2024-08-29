@@ -24,7 +24,7 @@ import (
 func RunServer(cmd *flag.FlagSet, args []string) {
 	var (
 		envs        = config.Envs
-		flagAppPort = cmd.String("port", "3000", "Application port")
+		flagAppPort = cmd.String("port", "4000", "Application port")
 		SERVER_PORT string
 	)
 

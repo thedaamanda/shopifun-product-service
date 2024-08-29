@@ -1,6 +1,7 @@
 package route
 
 import (
+	handlerProduct "codebase-app/internal/module/product/handler/rest"
 	handlerShop "codebase-app/internal/module/shop/handler/rest"
 	"codebase-app/pkg/response"
 
@@ -14,6 +15,7 @@ func SetupRoutes(app *fiber.App) {
 	)
 
 	handlerShop.NewShopHandler().Register(api)
+	handlerProduct.NewProductHandler().Register(api)
 
 	// fallback route
 	app.Use(func(c *fiber.Ctx) error {
