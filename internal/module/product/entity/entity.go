@@ -20,8 +20,8 @@ type ProductsRequest struct {
 	UserId      string   `prop:"user_id" validate:"uuid"`
 	Page        int      `query:"page" validate:"required"`
 	Paginate    int      `query:"paginate" validate:"required"`
-	CategoryId  string   `query:"category_id" validate:"omitempty,uuid"`
-	BrandId     string   `query:"brand_id" validate:"omitempty,uuid"`
+	CategoryIds []string `query:"category_ids" validate:"omitempty,dive,uuid"`
+	BrandIds    []string `query:"brand_ids" validate:"omitempty,dive,uuid"`
 	MinPrice    *float64 `query:"min_price" validate:"omitempty,numeric,min=0"`
 	MaxPrice    *float64 `query:"max_price" validate:"omitempty,numeric,min=0"`
 	SearchQuery string   `query:"search_query" validate:"omitempty,min=3,max=255"`

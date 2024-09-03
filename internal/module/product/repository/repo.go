@@ -4,6 +4,8 @@ import (
 	"codebase-app/internal/module/product/entity"
 	"codebase-app/internal/module/product/ports"
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
@@ -58,14 +60,22 @@ func (r *productRepository) GetProducts(ctx context.Context, req *entity.Product
 
 	args := []interface{}{req.UserId}
 
-	if req.CategoryId != "" {
-		query += " AND c.id = ?"
-		args = append(args, req.CategoryId)
+	if len(req.CategoryIds) > 0 {
+		placeholders := make([]string, len(req.CategoryIds))
+		for i := range req.CategoryIds {
+			placeholders[i] = "?"
+			args = append(args, req.CategoryIds[i])
+		}
+		query += fmt.Sprintf(" AND c.id IN (%s)", strings.Join(placeholders, ","))
 	}
 
-	if req.BrandId != "" {
-		query += " AND b.id =?"
-		args = append(args, req.BrandId)
+	if len(req.BrandIds) > 0 {
+		placeholders := make([]string, len(req.BrandIds))
+		for i := range req.BrandIds {
+			placeholders[i] = "?"
+			args = append(args, req.BrandIds[i])
+		}
+		query += fmt.Sprintf(" AND b.id IN (%s)", strings.Join(placeholders, ","))
 	}
 
 	if req.MinPrice != nil {
