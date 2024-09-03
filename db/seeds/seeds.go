@@ -34,6 +34,8 @@ func (s *Seed) run(table string, total int) {
 	switch table {
 	case "categories":
 		s.categoriesSeed()
+	case "brands":
+		s.brandsSeed()
 	case "products":
 	case "roles":
 		s.rolesSeed()
@@ -41,6 +43,7 @@ func (s *Seed) run(table string, total int) {
 		s.usersSeed(total)
 	case "all":
 		s.categoriesSeed()
+		s.brandsSeed()
 		s.rolesSeed()
 		s.usersSeed(total)
 	case "delete-all":
@@ -129,6 +132,42 @@ func (s *Seed) categoriesSeed() {
 	}
 
 	log.Info().Msg("categories table seeded successfully")
+}
+
+func (s *Seed) brandsSeed() {
+	categoriesMaps := []map[string]any{
+		{"name": "Nike"},
+		{"name": "Samsung"},
+		{"name": "Lenovo"},
+	}
+
+	tx, err := s.db.BeginTxx(context.Background(), nil)
+	if err != nil {
+		log.Error().Err(err).Msg("Error starting transaction")
+		return
+	}
+	defer func() {
+		if err != nil {
+			err = tx.Rollback()
+			log.Error().Err(err).Msg("Error rolling back transaction")
+			return
+		}
+		err = tx.Commit()
+		if err != nil {
+			log.Error().Err(err).Msg("Error committing transaction")
+		}
+	}()
+
+	_, err = tx.NamedExec(`
+		INSERT INTO brands (name)
+		VALUES (:name)
+	`, categoriesMaps)
+	if err != nil {
+		log.Error().Err(err).Msg("Error creating brands")
+		return
+	}
+
+	log.Info().Msg("brands table seeded successfully")
 }
 
 // rolesSeed seeds the roles table.

@@ -12,11 +12,16 @@ type Category struct {
 	Name string `json:"name" db:"name"`
 }
 
+type Brand struct {
+	Name string `json:"name" db:"name"`
+}
+
 type ProductsRequest struct {
 	UserId      string   `prop:"user_id" validate:"uuid"`
 	Page        int      `query:"page" validate:"required"`
 	Paginate    int      `query:"paginate" validate:"required"`
 	CategoryId  string   `query:"category_id" validate:"omitempty,uuid"`
+	BrandId     string   `query:"brand_id" validate:"omitempty,uuid"`
 	MinPrice    *float64 `query:"min_price" validate:"omitempty,numeric,min=0"`
 	MaxPrice    *float64 `query:"max_price" validate:"omitempty,numeric,min=0"`
 	SearchQuery string   `query:"search_query" validate:"omitempty,min=3,max=255"`
@@ -42,6 +47,7 @@ type ProductItem struct {
 	UserId      string   `json:"user_id" db:"user_id"`
 	Category    Category `json:"category"`
 	Shop        Shop     `json:"shop"`
+	Brand       Brand    `json:"brand"`
 }
 
 type ProductsResponse struct {
@@ -52,6 +58,7 @@ type ProductsResponse struct {
 type CreateProductRequest struct {
 	ShopId      string  `json:"shop_id" validate:"required,uuid" db:"shop_id"`
 	CategoryId  string  `json:"category_id" validate:"required,uuid" db:"category_id"`
+	BrandId     string  `json:"brand_id" validate:"required,uuid" db:"brand_id"`
 	Name        string  `json:"name" validate:"required" db:"name"`
 	Description string  `json:"description" validate:"required,max=255" db:"description"`
 	Price       float64 `json:"price" validate:"required" db:"price"`
@@ -76,12 +83,14 @@ type GetProductResponse struct {
 	UserId      string   `json:"user_id" db:"user_id"`
 	Category    Category `json:"category"`
 	Shop        Shop     `json:"shop"`
+	Brand       Brand    `json:"brand"`
 }
 
 type UpdateProductRequest struct {
 	Id          string  `params:"id" validate:"uuid" db:"id"`
 	ShopId      string  `json:"shop_id" validate:"required,uuid" db:"shop_id"`
 	CategoryId  string  `json:"category_id" validate:"required,uuid" db:"category_id"`
+	BrandId     string  `json:"brand_id" validate:"required,uuid" db:"brand_id"`
 	Name        string  `json:"name" validate:"required" db:"name"`
 	Description string  `json:"description" validate:"required,max=255" db:"description"`
 	Price       float64 `json:"price" validate:"required" db:"price"`

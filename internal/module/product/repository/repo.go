@@ -45,10 +45,12 @@ func (r *productRepository) GetProducts(ctx context.Context, req *entity.Product
 			s.name AS "shop.name",
 			s.description AS "shop.description",
 			s.terms AS "shop.terms",
-			c.name AS "category.name"
+			c.name AS "category.name",
+			b.name AS "brand.name"
 		FROM products p
 		INNER JOIN shops s ON p.shop_id = s.id
 		INNER JOIN categories c ON p.category_id = c.id
+		INNER JOIN brands b ON p.brand_id = b.id
 		WHERE
 			p.user_id = ?
 			AND p.deleted_at IS NULL
@@ -59,6 +61,11 @@ func (r *productRepository) GetProducts(ctx context.Context, req *entity.Product
 	if req.CategoryId != "" {
 		query += " AND c.id = ?"
 		args = append(args, req.CategoryId)
+	}
+
+	if req.BrandId != "" {
+		query += " AND b.id =?"
+		args = append(args, req.BrandId)
 	}
 
 	if req.MinPrice != nil {
@@ -72,7 +79,7 @@ func (r *productRepository) GetProducts(ctx context.Context, req *entity.Product
 	}
 
 	if req.SearchQuery != "" {
-		query += " AND (p.name LIKE ? OR p.description LIKE ?)"
+		query += " AND (p.name ILIKE ? OR p.description ILIKE ?)"
 		searchTerm := "%" + req.SearchQuery + "%"
 		args = append(args, searchTerm, searchTerm)
 	}
@@ -107,13 +114,14 @@ func (r *productRepository) CreateProduct(ctx context.Context, req *entity.Creat
 	var resp = new(entity.CreateProductResponse)
 
 	query := `
-		INSERT INTO products (shop_id, category_id, name, description, price, stock, user_id)
-		VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id
+		INSERT INTO products (shop_id, category_id, brand_id, name, description, price, stock, user_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
 	`
 
 	err := r.db.QueryRowxContext(ctx, r.db.Rebind(query),
 		req.ShopId,
 		req.CategoryId,
+		req.BrandId,
 		req.Name,
 		req.Description,
 		req.Price,
@@ -132,10 +140,11 @@ func (r *productRepository) GetProduct(ctx context.Context, req *entity.GetProdu
 
 	query := `
 	  SELECT
-			p.id, p.name, p.description, p.price, p.stock, p.user_id, s.name AS "shop.name", s.description AS "shop.description", s.terms AS "shop.terms", c.name AS "category.name"
+			p.id, p.name, p.description, p.price, p.stock, p.user_id, s.name AS "shop.name", s.description AS "shop.description", s.terms AS "shop.terms", c.name AS "category.name", b.name AS "brand.name"
 		FROM products p
 		INNER JOIN shops s ON p.shop_id = s.id
 		INNER JOIN categories c ON p.category_id = c.id
+		INNER JOIN brands b ON p.brand_id = b.id
 		WHERE p.id = ? AND p.deleted_at IS NULL
 	`
 
