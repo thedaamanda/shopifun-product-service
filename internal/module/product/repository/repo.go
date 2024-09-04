@@ -48,7 +48,14 @@ func (r *productRepository) GetProducts(ctx context.Context, req *entity.Product
 			s.description AS "shop.description",
 			s.terms AS "shop.terms",
 			c.name AS "category.name",
-			b.name AS "brand.name"
+			b.name AS "brand.name",
+			COALESCE(
+				ROUND(
+					(SELECT AVG(rating) FROM reviews WHERE product_id = p.id),
+					1
+				),
+				0.0
+			) AS rating
 		FROM products p
 		INNER JOIN shops s ON p.shop_id = s.id
 		INNER JOIN categories c ON p.category_id = c.id
@@ -88,6 +95,11 @@ func (r *productRepository) GetProducts(ctx context.Context, req *entity.Product
 		args = append(args, *req.MaxPrice)
 	}
 
+	if req.MinRating > 0 {
+		query += " AND COALESCE(ROUND((SELECT AVG(rating) FROM reviews WHERE product_id = p.id), 1), 0.0) >= ?"
+		args = append(args, req.MinRating)
+	}
+
 	if req.SearchQuery != "" {
 		query += " AND (p.name ILIKE ? OR p.description ILIKE ?)"
 		searchTerm := "%" + req.SearchQuery + "%"
@@ -98,7 +110,7 @@ func (r *productRepository) GetProducts(ctx context.Context, req *entity.Product
 		query += " AND p.stock > 0"
 	}
 
-	query += "ORDER BY p.created_at DESC LIMIT ? OFFSET ?"
+	query += " ORDER BY p.created_at DESC LIMIT ? OFFSET ?"
 	args = append(args, req.Paginate, req.Paginate*(req.Page-1))
 
 	err := r.db.SelectContext(ctx, &data, r.db.Rebind(query), args...)
@@ -150,7 +162,24 @@ func (r *productRepository) GetProduct(ctx context.Context, req *entity.GetProdu
 
 	query := `
 	  SELECT
-			p.id, p.name, p.description, p.price, p.stock, p.user_id, s.name AS "shop.name", s.description AS "shop.description", s.terms AS "shop.terms", c.name AS "category.name", b.name AS "brand.name"
+			p.id,
+			p.name,
+			p.description,
+			p.price,
+			p.stock,
+			p.user_id,
+			s.name AS "shop.name",
+			s.description AS "shop.description",
+			s.terms AS "shop.terms",
+			c.name AS "category.name",
+			b.name AS "brand.name",
+			COALESCE(
+				ROUND(
+					(SELECT AVG(rating) FROM reviews WHERE product_id = p.id),
+					1
+				),
+				0.0
+			) AS rating
 		FROM products p
 		INNER JOIN shops s ON p.shop_id = s.id
 		INNER JOIN categories c ON p.category_id = c.id

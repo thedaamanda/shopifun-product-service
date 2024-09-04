@@ -7,9 +7,16 @@ import (
 
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/jmoiron/sqlx"
-	"github.com/oklog/ulid/v2"
 	"github.com/rs/zerolog/log"
 )
+
+var userIDs = []string{
+	"c396f23e-a097-476d-aae5-cfc9973634f3",
+	"a4b7a3f1-751a-4a10-b506-99202581427b",
+	"c2776740-3885-444d-a73b-d6426a407792",
+	"3b07156c-b997-4803-8428-a4917a12792d",
+	"9d523336-6452-4212-89b4-09564f0d5842",
+}
 
 // Seed struct.
 type Seed struct {
@@ -30,22 +37,23 @@ func Execute(db *sqlx.DB, table string, total int) {
 
 // Run seeds.
 func (s *Seed) run(table string, total int) {
-
 	switch table {
 	case "categories":
 		s.categoriesSeed()
 	case "brands":
 		s.brandsSeed()
+	case "shops":
+		s.shopsSeed()
 	case "products":
-	case "roles":
-		s.rolesSeed()
-	case "users":
-		s.usersSeed(total)
+		s.productsSeed()
+	case "reviews":
+		s.reviewsSeed(total)
 	case "all":
 		s.categoriesSeed()
 		s.brandsSeed()
-		s.rolesSeed()
-		s.usersSeed(total)
+		s.shopsSeed()
+		s.productsSeed()
+		s.reviewsSeed(total)
 	case "delete-all":
 		s.deleteAll()
 	default:
@@ -170,11 +178,16 @@ func (s *Seed) brandsSeed() {
 	log.Info().Msg("brands table seeded successfully")
 }
 
-// rolesSeed seeds the roles table.
-func (s *Seed) rolesSeed() {
-	roleMaps := []map[string]any{
-		{"name": "admin"},
-		{"name": "end_user"},
+func (s *Seed) shopsSeed() {
+	shopMaps := make([]map[string]interface{}, 5)
+
+	for i := 0; i < 5; i++ {
+		shopMaps[i] = map[string]interface{}{
+			"user_id":     userIDs[i],
+			"name":        gofakeit.Company(),
+			"description": gofakeit.Sentence(10),
+			"terms":       gofakeit.Paragraph(2, 2, 10, "\n"),
+		}
 	}
 
 	tx, err := s.db.BeginTxx(context.Background(), nil)
@@ -195,19 +208,58 @@ func (s *Seed) rolesSeed() {
 	}()
 
 	_, err = tx.NamedExec(`
-		INSERT INTO roles (name)
-		VALUES (:name)
-	`, roleMaps)
+		INSERT INTO shops (user_id, name, description, terms)
+		VALUES (:user_id, :name, :description, :terms)
+	`, shopMaps)
 	if err != nil {
-		log.Error().Err(err).Msg("Error creating roles")
+		log.Error().Err(err).Msg("Error creating shops")
 		return
 	}
 
-	log.Info().Msg("roles table seeded successfully")
+	log.Info().Msg("shops table seeded successfully")
 }
 
-// users
-func (s *Seed) usersSeed(total int) {
+func (s *Seed) productsSeed() {
+	var (
+		categories []struct{ ID string }
+		brands     []struct{ ID string }
+		shops      []struct {
+			ID     string
+			UserId string
+		}
+	)
+
+	if err := s.db.Select(&categories, "SELECT id FROM categories"); err != nil {
+		log.Error().Err(err).Msg("Error fetching categories")
+		return
+	}
+	if err := s.db.Select(&brands, "SELECT id FROM brands"); err != nil {
+		log.Error().Err(err).Msg("Error fetching brands")
+		return
+	}
+	if err := s.db.Select(&shops, "SELECT id, user_id as UserId FROM shops"); err != nil {
+		log.Error().Err(err).Msg("Error fetching shops")
+		return
+	}
+
+	productMaps := make([]map[string]interface{}, 0, len(shops)*5)
+
+	for _, shop := range shops {
+		for i := 0; i < 5; i++ {
+			product := map[string]interface{}{
+				"shop_id":     shop.ID,
+				"category_id": categories[gofakeit.Number(0, len(categories)-1)].ID,
+				"brand_id":    brands[gofakeit.Number(0, len(brands)-1)].ID,
+				"name":        gofakeit.ProductName(),
+				"description": gofakeit.ProductDescription(),
+				"price":       gofakeit.Price(10, 1000),
+				"stock":       gofakeit.Number(0, 100),
+				"user_id":     shop.UserId,
+			}
+			productMaps = append(productMaps, product)
+		}
+	}
+
 	tx, err := s.db.BeginTxx(context.Background(), nil)
 	if err != nil {
 		log.Error().Err(err).Msg("Error starting transaction")
@@ -219,89 +271,73 @@ func (s *Seed) usersSeed(total int) {
 			log.Error().Err(err).Msg("Error rolling back transaction")
 			return
 		}
-
 		err = tx.Commit()
 		if err != nil {
 			log.Error().Err(err).Msg("Error committing transaction")
 		}
 	}()
 
-	type generalData struct {
-		Id   string `db:"id"`
-		Name string `db:"name"`
-	}
-
-	var (
-		roles    = make([]generalData, 0)
-		userMaps = make([]map[string]any, 0)
-	)
-
-	err = s.db.Select(&roles, `SELECT id, name FROM roles`)
+	_, err = tx.NamedExec(`
+		INSERT INTO products (shop_id, category_id, brand_id, name, description, price, stock, user_id)
+		VALUES (:shop_id, :category_id, :brand_id, :name, :description, :price, :stock, :user_id)
+	`, productMaps)
 	if err != nil {
-		log.Error().Err(err).Msg("Error selecting roles")
+		log.Error().Err(err).Msg("Error creating products")
 		return
 	}
 
-	for i := 0; i < total; i++ {
-		selectedRole := roles[gofakeit.Number(0, len(roles)-1)]
+	log.Info().Msg("products table seeded successfully")
+}
 
-		dataUserToInsert := make(map[string]any)
-		dataUserToInsert["id"] = ulid.Make().String()
-		dataUserToInsert["role_id"] = selectedRole.Id
-		dataUserToInsert["name"] = gofakeit.Name()
-		dataUserToInsert["email"] = gofakeit.Email()
-		dataUserToInsert["whatsapp_number"] = gofakeit.Phone()
-		dataUserToInsert["password"] = "$2y$10$mVf4BKsfPSh/pjgHjvk.JOlGdkIYgBGyhaU9WQNMWpYskK9MZlb0G" // password
-
-		userMaps = append(userMaps, dataUserToInsert)
-	}
-
+func (s *Seed) reviewsSeed(total int) {
 	var (
-		endUserId   string
-		adminUserId string
+		products []struct{ ID string }
 	)
 
-	// iterate over roles to get service advisor id
-	for _, role := range roles {
-		if role.Name == "admin" {
-			adminUserId = role.Id
-			continue
+	if err := s.db.Select(&products, "SELECT id FROM products"); err != nil {
+		log.Error().Err(err).Msg("Error fetching products")
+		return
+	}
+
+	reviewMaps := make([]map[string]interface{}, 0, len(products)*20)
+
+	for _, product := range products {
+		for i := 0; i < total; i++ {
+			review := map[string]interface{}{
+				"product_id": product.ID,
+				"user_id":    gofakeit.UUID(),
+				"rating":     gofakeit.Number(1, 5),
+				"review":     gofakeit.Sentence(10),
+			}
+			reviewMaps = append(reviewMaps, review)
 		}
-		if role.Name == "end_user" {
-			endUserId = role.Id
-			continue
+	}
+
+	tx, err := s.db.BeginTxx(context.Background(), nil)
+	if err != nil {
+		log.Error().Err(err).Msg("Error starting transaction")
+		return
+	}
+	defer func() {
+		if err != nil {
+			err = tx.Rollback()
+			log.Error().Err(err).Msg("Error rolling back transaction")
+			return
 		}
-	}
-
-	EndUser := map[string]any{
-		"id":              ulid.Make().String(),
-		"role_id":         endUserId,
-		"name":            "Irham",
-		"email":           "irham@fake.com",
-		"whatsapp_number": gofakeit.Phone(),
-		"password":        "$2y$10$mVf4BKsfPSh/pjgHjvk.JOlGdkIYgBGyhaU9WQNMWpYskK9MZlb0G", // password
-	}
-
-	AdminUser := map[string]any{
-		"id":              ulid.Make().String(),
-		"role_id":         adminUserId,
-		"name":            "Fathan",
-		"email":           "fathan@fake.com",
-		"whatsapp_number": gofakeit.Phone(),
-		"password":        "$2y$10$mVf4BKsfPSh/pjgHjvk.JOlGdkIYgBGyhaU9WQNMWpYskK9MZlb0G", // password
-	}
-
-	userMaps = append(userMaps, EndUser)
-	userMaps = append(userMaps, AdminUser)
+		err = tx.Commit()
+		if err != nil {
+			log.Error().Err(err).Msg("Error committing transaction")
+		}
+	}()
 
 	_, err = tx.NamedExec(`
-		INSERT INTO users (id, role_id, name, email, whatsapp_number, password)
-		VALUES (:id, :role_id, :name, :email, :whatsapp_number, :password)
-	`, userMaps)
+		INSERT INTO reviews (product_id, user_id, rating, review)
+		VALUES (:product_id, :user_id, :rating, :review)
+	`, reviewMaps)
 	if err != nil {
-		log.Error().Err(err).Msg("Error creating users")
+		log.Error().Err(err).Msg("Error creating reviews")
 		return
 	}
 
-	log.Info().Msg("users table seeded successfully")
+	log.Info().Msg("reviews table seeded successfully")
 }

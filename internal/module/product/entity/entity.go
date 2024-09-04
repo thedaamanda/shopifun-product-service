@@ -24,6 +24,7 @@ type ProductsRequest struct {
 	BrandIds    []string `query:"brand_ids" validate:"omitempty,dive,uuid"`
 	MinPrice    *float64 `query:"min_price" validate:"omitempty,numeric,min=0"`
 	MaxPrice    *float64 `query:"max_price" validate:"omitempty,numeric,min=0"`
+	MinRating   float64  `query:"min_rating" validate:"omitempty,numeric,min=0"`
 	SearchQuery string   `query:"search_query" validate:"omitempty,min=3,max=255"`
 	IsAvailable bool     `query:"is_available" validate:"omitempty"`
 }
@@ -44,6 +45,7 @@ type ProductItem struct {
 	Description string   `json:"description" db:"description"`
 	Price       float64  `json:"price" db:"price"`
 	Stock       int      `json:"stock" db:"stock"`
+	Rating      float64  `json:"rating" db:"rating"`
 	UserId      string   `json:"user_id" db:"user_id"`
 	Category    Category `json:"category"`
 	Shop        Shop     `json:"shop"`
@@ -80,6 +82,7 @@ type GetProductResponse struct {
 	Description string   `json:"description" db:"description"`
 	Price       float64  `json:"price" db:"price"`
 	Stock       int      `json:"stock" db:"stock"`
+	Rating      float64  `json:"rating" db:"rating"`
 	UserId      string   `json:"user_id" db:"user_id"`
 	Category    Category `json:"category"`
 	Shop        Shop     `json:"shop"`
