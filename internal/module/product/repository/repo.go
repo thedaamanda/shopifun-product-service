@@ -238,3 +238,66 @@ func (r *productRepository) DeleteProduct(ctx context.Context, req *entity.Delet
 
 	return nil
 }
+
+func (p *productRepository) IsShopOwner(ctx context.Context, userId, shopId string) (bool, error) {
+	var (
+		isOwner bool
+		payload = struct {
+			UserId string `json:"user_id"`
+			ShopId string `json:"shop_id"`
+		}{userId, shopId}
+	)
+
+	query := `
+		SELECT
+			EXISTS (
+				SELECT 1
+				FROM
+					shops
+				WHERE
+					user_id = $1
+					AND id = $2
+					AND deleted_at IS NULL
+			)
+	`
+
+	err := p.db.GetContext(ctx, &isOwner, query, userId, shopId)
+	if err != nil {
+		log.Error().Err(err).Any("payload", payload).Msg("repository: IsShopOwner failed")
+		return isOwner, err
+	}
+
+	return isOwner, nil
+}
+
+func (p *productRepository) IsProductOwner(ctx context.Context, userId, productId string) (bool, error) {
+	var (
+		isOwner bool
+		payload = struct {
+			UserId    string `json:"user_id"`
+			ProductId string `json:"product_id"`
+		}{userId, productId}
+	)
+
+	query := `
+		SELECT
+			EXISTS (
+				SELECT 1
+				FROM
+					products
+				LEFT JOIN
+					shops ON products.shop_id = shops.id
+				WHERE
+					shops.user_id = $1
+					AND products.id = $2
+			)
+	`
+
+	err := p.db.GetContext(ctx, &isOwner, query, userId, productId)
+	if err != nil {
+		log.Error().Err(err).Any("payload", payload).Msg("repository: IsProductOwner failed")
+		return isOwner, err
+	}
+
+	return isOwner, nil
+}
