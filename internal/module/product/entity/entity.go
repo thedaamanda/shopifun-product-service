@@ -1,6 +1,9 @@
 package entity
 
-import "codebase-app/pkg/types"
+import (
+	"codebase-app/pkg/types"
+	"time"
+)
 
 type Shop struct {
 	Name        string `json:"name" db:"name"`
@@ -69,7 +72,16 @@ type CreateProductRequest struct {
 }
 
 type CreateProductResponse struct {
-	Id string `json:"id" db:"id"`
+	Id          string    `json:"id" db:"id"`
+	UserId      string    `json:"user_id" db:"user_id"`
+	CategoryId  string    `json:"category_id" db:"category_id"`
+	BrandId     string    `json:"brand_id" db:"brand_id"`
+	Name        string    `json:"name" db:"name"`
+	Description *string   `json:"description" db:"description"`
+	Price       float64   `json:"price" db:"price"`
+	Stock       int       `json:"stock" db:"stock"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
 }
 
 type GetProductRequest struct {
